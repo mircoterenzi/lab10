@@ -1,12 +1,15 @@
 package it.unibo.oop.lab.streams;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Map.Entry;
 
 /**
  *
@@ -75,23 +78,22 @@ public final class MusicGroupImpl implements MusicGroup {
     public Optional<String> longestSong() {
         return songs.stream()
                 .reduce((a,b) -> a.getDuration()>=b.getDuration() ? a : b)
-                .map(a -> a.getSongName());
-    }
-
-    private double albumDuration (String name) {
-        double tot = 0;
-        for (Song curr : songs) {
-            if (curr.getAlbumName().orElse("").equals(name)) {
-                tot += curr.getDuration();
-            }
-        }
-        return tot;
+                /* In questo punto ho utilizzato una specie di comparator che confronta due elementi
+                 * e mantiene il maggiore, a posteriori, guardando le soluzioni, ci sarebbe questa linea 
+                 * di codice alternativa alla mia che utilizza una collect:
+                 * collect(Collectors.maxBy(Comparator.comparingDouble(Song::getDuration)))
+                */
+                .map(Song::getSongName);
     }
 
     @Override
     public Optional<String> longestAlbum() {
-        return albums.keySet().stream()
-                .reduce((a,b) -> albumDuration(a)>=albumDuration(b) ? a : b);
+        return songs.stream()
+                .filter(a -> a.getAlbumName().isPresent())
+                .collect(Collectors.groupingBy(Song::getAlbumName, Collectors.summingDouble(Song::getDuration)))
+                .entrySet().stream()    //questo perché la collect restituisce una Map, la rendo un Set e di seguito in stream
+                .collect(Collectors.maxBy(Comparator.comparingDouble(Entry::getValue)))
+                .flatMap(Entry::getKey);
         
     }
 
